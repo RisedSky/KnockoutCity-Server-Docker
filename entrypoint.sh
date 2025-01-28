@@ -23,9 +23,15 @@ else
     mkdir -p /data
     cd /data || exit 1
 
-    wget "$KOC_SERVER_DOWNLOAD_URL" -O KnockoutCity-Server.zip
-    unzip KnockoutCity-Server.zip
-    rm KnockoutCity-Server.zip
+    # Check if the files are already there
+    if [[ -d "$KOC_SERVER_FILE_PATH" ]]; then
+        echo "Server files already downloaded. Skipping download..."
+    else
+        echo "Downloading Knockout City Server files..."
+        wget "$KOC_SERVER_DOWNLOAD_URL" -O KnockoutCity-Server.zip
+        unzip KnockoutCity-Server.zip
+        # rm KnockoutCity-Server.zip
+    fi
 fi
 
 echo ""
@@ -41,7 +47,7 @@ echo "--------------------------------------------------------"
 echo ""
 
 cd $KOC_SERVER_FILE_PATH || exit 1
-wine64 KnockoutCityServer.exe \
+WINEDEBUG=+all wine64 KnockoutCityServer.exe \
     -backend_port="${KOC_BACKEND_PORT:-23600}" \
     -server_min_port="${KOC_SERVER_MIN_PORT:-23600}" \
     -server_max_port="${KOC_SERVER_MAX_PORT:-23699}" \
