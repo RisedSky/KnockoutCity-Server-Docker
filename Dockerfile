@@ -1,10 +1,8 @@
-# Use the official Debian image as base, with amd64 architecture specified
 FROM --platform=linux/amd64 debian:bullseye
 
 LABEL org.opencontainers.image.source "https://github.com/Tandashi/knockoutcity-server-docker"
 LABEL org.opencontainers.image.description "A Docker Container Image that runs a Knockout City Private Server"
 
-# Set environment variable to disable interactive prompts during package installs
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Add multiarch support and install dependencies
@@ -13,31 +11,45 @@ RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     gpg \
-    unzip
-
-RUN apt-get install -y \
+    unzip \
+    software-properties-common \
     libwine:i386 \
-    fonts-wine:i386
-RUN apt install -y \
+    fonts-wine:i386 \
+    wine \
+    wine32 \
+    libx11-6 \
+    libfreetype6 \
+    libpng16-16 \
     tzdata
-RUN mkdir -pm755 /etc/apt/keyrings
 
-RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key -
+RUN apt-get update && apt-get install -y \
+    libx11-6:i386 \
+    libfreetype6:i386 \
+    libpng16-16:i386 \
+    libxrender1:i386 \
+    libxcb1:i386 \
+    libxext6:i386 \
+    libxi6:i386 \
+    libsm6:i386 \
+    libice6:i386 \
+    libcups2:i386 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/bullseye/winehq-bullseye.sources
+# Install WineHQ
+RUN mkdir -pm755 /etc/apt/keyrings && \
+    wget -O - https://dl.winehq.org/wine-builds/winehq.key | gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key && \
+    wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/bullseye/winehq-bullseye.sources && \
+    apt-get update && apt-get install --install-recommends winehq-stable -y
 
-RUN apt update && apt install --install-recommends winehq-stable -y
-
+# Clean up
 RUN rm -rf /var/lib/apt/lists/*
 
-# Verify wine installation
-RUN wine --version || { echo "Wine installation check failed"; exit 1; }
+RUN wineboot --init winetricks
 
-# Wine boot step (ensure this step succeeds)
-RUN wine wineboot || { echo "Wine boot failed"; exit 1; }
+# Initialize Wine environment
+RUN winecfg || wineboot || { echo "Wine initialization failed"; exit 1; }
 
-# Copy entrypoint script and set permissions
+# Copy entrypoint script
 COPY --chmod=0755 entrypoint.sh entrypoint.sh
 
-# Set entrypoint
 ENTRYPOINT ["sh", "entrypoint.sh"]
